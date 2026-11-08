@@ -1166,6 +1166,30 @@ button{font-family:inherit!important}
   box-shadow:0 0 0 2px #303832,inset 0 1px 2px #53614b66!important;
 }
 
+
+/* Die untere Original-LCD-Position zeigt jetzt eine echte, laufende Spiel-Stoppuhr.
+   Der in die Bildvorlage eingebrannte Beispielwert 02-32 wird vollständig abgedeckt. */
+.hit-time-lcd{
+  position:absolute;z-index:3;
+  left:38.0%;top:67.38%;width:24%;height:4.95%;
+  display:flex;align-items:center;justify-content:center;
+  box-sizing:border-box;
+  padding:1px 3px;
+  background:#adba9e;
+  color:#26382c;
+  border-radius:2px;
+  box-shadow:inset 0 1px 3px rgba(43,58,42,.20);
+  pointer-events:none;
+  overflow:hidden;
+}
+.hit-time-lcd .seg7{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  gap:0;
+}
+.hit-time-lcd .seg7 svg{
+  display:block;flex:0 0 17%;width:17%!important;height:86%!important;
+}
+
 </style>
 </head>
 <body>
@@ -1332,8 +1356,15 @@ function handheld(stage,model){
     const art=el('img','hit-device-art',device);art.src=HIT_DEVICE_ART;art.alt='';art.draggable=false;
     const brand=div(device,'hit-device-logo');brand.innerHTML=HIT_KLACK_LOGO;
     const lcd=div(device,'hit-lcd'),keys=div(device,'hit-keys');
+    // Die Originalabbildung enthält den fest eingezeichneten Wert 02-32.
+    // Diese eigene LCD-Schicht ersetzt ihn durch die reale Spielzeit.
+    const time=div(device,'hit-time-lcd');
+    time.setAttribute('role','timer');
+    time.setAttribute('aria-label','Spielzeit 0 Minuten 0 Sekunden');
+    time.title='Spielzeit (Minuten–Sekunden)';
+    time.innerHTML=seg7('00-00',32);
     const errors=div(hh,'hit-errors');el('span','hit-errors-label',errors,'FEHLER');
-    return {hh,lcd,keys,leds:errors};
+    return {hh,lcd,keys,leds:errors,time};
   }
   if(kind==='tele'||kind==='knobel'){
     const hh=div(stage,'retro-shell'),face=div(hh,'retro-unit retro-'+kind);
@@ -1531,12 +1562,21 @@ start(stage,api){
 
 /* ---------- 4 Quadrat-Jagd ---------- */
 G.push({id:'quadrat',icon:'🟨',name:'Hit-Klack',tag:'MEPHISTO · Quadrate stoppen',mode:'high',unit:'Punkte',
-howto:'Zehn Quadrate liegen ineinander. Von außen läuft ein Balken Ring für Ring zur Mitte. Stopp ihn mit der Farbtaste auf seiner Seite (am Rechner mit der Pfeiltaste): oben grün, links rot, rechts blau, unten gelb. Den ersten Balken eines Quadrats darfst du auf jedem freien Ring stoppen, die nächsten drei müssen im selben Ring landen. Daneben gestoppt oder bis zur Mitte durchgelaufen: Das offene und das zuletzt fertige Quadrat werden gelöscht. Nach drei Fehlern ist Schluss.',
+howto:'Zehn Quadrate liegen ineinander. Von außen läuft ein Balken Ring für Ring zur Mitte. Stopp ihn mit der Farbtaste auf seiner Seite (am Rechner mit der Pfeiltaste): oben grün, links rot, rechts blau, unten gelb. Den ersten Balken eines Quadrats darfst du auf jedem freien Ring stoppen, die nächsten drei müssen im selben Ring landen. Daneben gestoppt oder bis zur Mitte durchgelaufen: Das offene und das zuletzt fertige Quadrat werden gelöscht. Nach drei Fehlern ist Schluss. Die kleine LCD-Anzeige unter dem Quadrat misst die Spielzeit (Minuten–Sekunden).',
 start(stage,api){
   const Hh=handheld(stage,'HIT-KLACK'),S=300,C=150,cv=makeCanvas(Hh.lcd,S,S),ctx=cv.ctx,leds=[0,1,2].map(()=>el('span','led',Hh.leds));
   const RN=10,U=13.5,BW=9,BG='#b4bf9a',INK='#1f2618',GHOST='rgba(31,38,24,.09)';
   const full=Array.from({length:RN},()=>[0,0,0,0]);
   let cur={r:RN-1,s:0},active=-1,t=0,wait=.7,step=.3,errors=0,score=0,over=false,started=false,clock=0,blinkRing=-1,blinkT=0,errT=0;
+  let displayedSecond=-1;
+  function showElapsedTime(){
+    const sec=Math.min(5999,Math.floor(clock));
+    if(sec===displayedSecond)return;
+    displayedSecond=sec;
+    const minutes=Math.floor(sec/60),seconds=sec%60;
+    Hh.time.innerHTML=seg7(String(minutes).padStart(2,'0')+'-'+String(seconds).padStart(2,'0'),32);
+    Hh.time.setAttribute('aria-label',`Spielzeit ${minutes} Minuten ${seconds} Sekunden`);
+  }
   const ringFull=r=>full[r].every(Boolean),freeSides=r=>[0,1,2,3].filter(s=>!full[r][s]),fullCount=()=>full.filter(rw=>rw.every(Boolean)).length;
   function spawn(){const fs=active>=0?freeSides(active):[];cur={r:RN-1,s:fs.length?fs[rnd(fs.length)]:rnd(4)};t=0;wait=.7;}
   function bar(r,s,col){const D=(r+1)*U,h=BW/2,g=1.8,Lo=D+h-g,Li=Math.max(0,D-h-g);
@@ -1561,8 +1601,8 @@ start(stage,api){
   const pad=div(Hh.keys,'dpad');
   [['up','g',0,'▲','oben'],['left','r',3,'◀','links'],['right','b',1,'▶','rechts'],['down','y',2,'▼','unten']].forEach(([c,col,s,lbl,aria])=>{const b=hbtn(pad,lbl,col,{onDown:()=>press(s)});b.classList.add('d-'+c);b.setAttribute('aria-label',aria);});
   listen(window,'keydown',e=>{const m={ArrowUp:0,ArrowRight:1,ArrowDown:2,ArrowLeft:3}[e.code];if(m!=null){e.preventDefault();if(!e.repeat)press(m);}});
-  hud();draw();
-  countdown(stage,()=>{started=true;spawn();loop(dt=>{if(over)return false;clock+=dt;blinkT=Math.max(0,blinkT-dt);errT=Math.max(0,errT-dt);t+=dt;
+  hud();draw();showElapsedTime();
+  countdown(stage,()=>{started=true;spawn();loop(dt=>{if(over)return false;clock+=dt;showElapsedTime();blinkT=Math.max(0,blinkT-dt);errT=Math.max(0,errT-dt);t+=dt;
     if(t>=wait){t=0;wait=step;if(cur.r===0){if(misstep())return false;spawn();}else cur.r--;}
     hud();draw();});});
 }});
