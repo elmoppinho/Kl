@@ -1153,6 +1153,19 @@ button{font-family:inherit!important}
 #game .knobel-timebar{display:block!important;flex:1;margin:0!important;height:10px!important;min-width:40px;border:1px solid #667568!important;background:#354335!important;border-radius:2px!important;overflow:hidden}
 #game .knobel-timebar i{display:block;height:100%;background:linear-gradient(90deg,#7eb16b,#c0d9a5)!important;transition:width .08s linear}
 #game .knobel-status{display:block!important;box-sizing:border-box;width:min(88vw,430px);max-width:100%;margin:0 auto 8px;min-height:2.5em;padding:8px 12px;border:1px solid #535d53;border-radius:7px;background:#151b18;color:#e5eee2!important;font-size:.86rem;line-height:1.4;text-align:center;white-space:normal}
+
+/* Hit-Klack: main game LCD must not cover the smaller clock LCD underneath.
+   Preserve the transparent appliance art, true button hit areas, and game canvas. */
+.hit-device .hit-lcd{
+  left:34.5%!important;
+  top:37.9%!important;
+  width:31.0%!important;
+  aspect-ratio:1 / 1;
+  border:1px solid #465244!important;
+  border-radius:2px!important;
+  box-shadow:0 0 0 2px #303832,inset 0 1px 2px #53614b66!important;
+}
+
 </style>
 </head>
 <body>
